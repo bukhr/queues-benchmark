@@ -1,24 +1,9 @@
-# README
+# Documentación
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+La documentación se encuentra en [notion](https://www.notion.so/bukhr/ActiveJob-DelayedJob-v-s-GoodJob-v-s-Sidekiq-535fcd4acf7243a6826eeee0bea490da)
 
-Things you may want to cover:
+Instalación:
 
-* Ruby version
+* `brew install redis`
 
-* System dependencies
-
-* Configuration
-
-* Database creation
-
-* Database initialization
-
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+* Correr el benchmark `bin/run_benchmark` puede recibir un argumento donde se señalan los Nk jobs a ejecutarse (100k por defecto)  

@@ -1,0 +1,110 @@
+#!/usr/bin/env ruby
+# original: https://raw.githubusercontent.com/chrismaximin/benchmark-sidekiq-and-activejob/master/bin/run_benchmarks
+
+def log_message(message)
+  now = Time.now.utc
+  puts "[#{now.to_s(:db)}.#{now.usec}] #{message}"
+end
+
+STDERR.sync = STDOUT.sync = true
+
+puts "Loading rails environment..."
+require_relative "../config/environment"
+require "benchmark/ips"
+require "sidekiq/cli"
+# ActiveRecordQueryTrace.enabled = false #(ENV['ENABLE_QUERY_TRACE'].presence || 'false') == 'true'
+ActiveRecord::Base.logger.level = Logger::ERROR
+
+COUNT = (ARGV[0].presence || 1).to_i * 1000
+
+def clear_queue
+  Sidekiq::Queue.new(:benchmarks).clear
+end
+
+def queue_is_empty?
+  Sidekiq::Queue.new(:benchmarks).size == 0
+end
+
+def with_sidekiq
+  clear_queue
+  log_message "Starting sidekiq..."
+  pid = spawn("bundle e sidekiq -c 1 -q benchmarks", out: "/dev/null", err: "/dev/null")
+
+  log_message "Wait until Sidekiq worker is ready..."
+  ExampleJob.perform_later
+  loop do
+    break if queue_is_empty?
+    sleep 0.01
+  end
+  log_message "Sidekiq worker is now ready (pid: #{pid})"
+
+  yield
+ensure
+  log_message "Terminating sidekiq (pid = #{pid}) ..."
+  Process.kill("TERM", pid)
+end
+
+results = {}
+
+log_message "===== Enqueuing jobs"
+log_message "=== Warmup"
+ExampleJob.perform_later
+ExampleWorker.perform_async
+
+benchmark = "Enqueuing #{COUNT/1000}k ActiveJob jobs"
+log_message "=== #{benchmark}"
+clear_queue
+results[benchmark] = Benchmark.measure do
+  COUNT.times do |i|
+    ExampleJob.perform_later
+  end
+end.real.round(2)
+log_message "Duration: #{results[benchmark]} seconds"
+
+benchmark = "Enqueuing #{COUNT/1000}k native Sidekiq jobs"
+log_message "=== #{benchmark}"
+clear_queue
+results[benchmark] = Benchmark.measure do
+  COUNT.times do |i|
+    ExampleWorker.perform_async
+  end
+end.real.round(2)
+log_message "Duration: #{results[benchmark]} seconds"
+
+
+log_message "===== Enqueuing and processing jobs"
+benchmark = "Enqueuing & processing #{COUNT/1000}k ActiveJob jobs"
+log_message "=== #{benchmark}"
+with_sidekiq do
+  results[benchmark] = Benchmark.measure do
+    COUNT.times do
+      ExampleJob.perform_later
+    end
+    loop do
+      break if queue_is_empty?
+      sleep 0.1
+    end
+  end.real.round(2)
+end
+log_message "Duration: #{results[benchmark]} seconds"
+
+benchmark = "Enqueuing & processing #{COUNT/1000}k native Sidekiq jobs"
+log_message "=== #{benchmark}"
+with_sidekiq do
+  results[benchmark] = Benchmark.measure do
+    COUNT.times do
+      ExampleWorker.perform_async
+    end
+    loop do
+      break if queue_is_empty?
+      sleep 0.1
+    end
+  end.real.round(2)
+end
+log_message "Duration: #{results[benchmark]} seconds"
+
+puts "=" * 20
+puts "Results:"
+results.each do |metric, duration|
+  puts "#{metric} => #{duration}"
+end
