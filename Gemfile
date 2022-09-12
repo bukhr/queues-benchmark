@@ -11,6 +11,7 @@ gem 'delayed_job_active_record'
 gem 'benchmark-ips'
 gem 'good_job'
 gem 'delayed_job_active_record'
+gem 'que'
 gem 'pg'
 
 # Use Puma as the app server

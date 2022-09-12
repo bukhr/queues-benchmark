@@ -124,6 +124,7 @@ GEM
       racc (~> 1.4)
     pg (1.4.3)
     public_suffix (5.0.0)
+    que (2.2.0)
     raabro (1.4.0)
     racc (1.6.0)
     rack (2.2.4)
@@ -214,6 +215,7 @@ DEPENDENCIES
   good_job
   listen (~> 3.3)
   pg
+  que
   rack-mini-profiler (~> 2.0)
   rails (~> 6.1.4, >= 6.1.4.1)
   selenium-webdriver

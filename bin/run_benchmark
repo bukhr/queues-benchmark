@@ -16,95 +16,106 @@ require "sidekiq/cli"
 ActiveRecord::Base.logger.level = Logger::ERROR
 
 COUNT = (ARGV[0].presence || 1).to_i * 1000
+TOTAL = "#{COUNT/1000}K"
 
-def clear_queue
-  Sidekiq::Queue.new(:benchmarks).clear
+def clear_queue_adapter(adapter)
+  case adapter
+  # when :active_job
+    # ActiveJob::Job.delete_all
+  when :delayed_job
+    Delayed::Job.delete_all
+  when :good_job
+    ActiveRecord::Base.connection.execute("DELETE FROM public.good_jobs")
+  when :que_job
+    ActiveRecord::Base.connection.execute("DELETE FROM public.que_jobs")
+  when :sidekiq
+    Sidekiq::Queue.new(:benchmarks).clear
+  else
+    raise "NOT IMPLEMENTED"
+  end
 end
 
-def queue_is_empty?
-  Sidekiq::Queue.new(:benchmarks).size == 0
+def queue_is_empty_adapter?(adapter)
+  case adapter
+  # when :active_job
+    # ActiveJob::Job.delete_all
+  when :delayed_job
+    ActiveRecord::Base.connection.execute("SELECT COUNT(*) FROM public.delayed_jobs").first["count"] == 0
+  when :good_job
+    ActiveRecord::Base.connection.execute("SELECT COUNT(*) FROM public.good_jobs").first["count"] == 0
+  when :que_job
+    ActiveRecord::Base.connection.execute("SELECT COUNT(*) FROM public.que_jobs").first["count"] == 0
+  when :sidekiq
+    Sidekiq::Queue.new(:benchmarks).size == 0
+  else
+    raise "NOT IMPLEMENTED"
+  end
 end
 
-def with_sidekiq
-  clear_queue
-  log_message "Starting sidekiq..."
-  pid = spawn("bundle e sidekiq -c 1 -q benchmarks", out: "/dev/null", err: "/dev/null")
+def with_adapter(adapter, job)
+  clear_queue_adapter(adapter)
+  log_message "Starting #{adapter}..."
+  pid = spawn(job[2], out: "/dev/null", err: "/dev/null")
 
-  log_message "Wait until Sidekiq worker is ready..."
-  ExampleJob.perform_later
+  log_message "Wait until #{adapter} worker is ready..."
+  job[0].send(job[1])
   loop do
-    break if queue_is_empty?
+    break if queue_is_empty_adapter?(adapter)
     sleep 0.01
   end
-  log_message "Sidekiq worker is now ready (pid: #{pid})"
+  log_message "#{adapter}} worker is now ready (pid: #{pid})"
 
   yield
 ensure
-  log_message "Terminating sidekiq (pid = #{pid}) ..."
+  log_message "Terminating #{adapter} (pid = #{pid}) ..."
   Process.kill("TERM", pid)
 end
 
 results = {}
-
+adapters ={
+  # active_job: [ExampleJob, :perform_later],
+  delayed_job: [ExampleDelayedJob, :perform_later, "bundle exec rake jobs:work"],
+  good_job: [ExampleGoodJob, :perform_later, "bundle exec good_job start"],
+  que_job: [ExampleQueJob, :enqueue, "bundle exec que -q benchmarks -p 1"],
+  sidekiq: [ExampleWorker, :perform_async, "bundle e sidekiq -c 1 -q benchmarks"]
+}
 log_message "===== Enqueuing jobs"
 log_message "=== Warmup"
-ExampleJob.perform_later
-ExampleWorker.perform_async
+# ExampleJob.perform_later
+# ExampleWorker.perform_async
 
-benchmark = "Enqueuing #{COUNT/1000}k ActiveJob jobs"
-log_message "=== #{benchmark}"
-clear_queue
-results[benchmark] = Benchmark.measure do
-  COUNT.times do |i|
-    ExampleJob.perform_later
-  end
-end.real.round(2)
-log_message "Duration: #{results[benchmark]} seconds"
-
-benchmark = "Enqueuing #{COUNT/1000}k native Sidekiq jobs"
-log_message "=== #{benchmark}"
-clear_queue
-results[benchmark] = Benchmark.measure do
-  COUNT.times do |i|
-    ExampleWorker.perform_async
-  end
-end.real.round(2)
-log_message "Duration: #{results[benchmark]} seconds"
-
-
-log_message "===== Enqueuing and processing jobs"
-benchmark = "Enqueuing & processing #{COUNT/1000}k ActiveJob jobs"
-log_message "=== #{benchmark}"
-with_sidekiq do
+adapters.each do |adapter, job|
+  benchmark = "Enqueuing #{TOTAL} #{adapter.to_s.camelcase} jobs"
+  log_message "=== #{benchmark}"
+  clear_queue_adapter(adapter)
   results[benchmark] = Benchmark.measure do
-    COUNT.times do
-      ExampleJob.perform_later
-    end
-    loop do
-      break if queue_is_empty?
-      sleep 0.1
+    COUNT.times do |i|
+      job[0].send(job[1])
     end
   end.real.round(2)
+  log_message "Duration: #{results[benchmark]} seconds"  
 end
-log_message "Duration: #{results[benchmark]} seconds"
 
-benchmark = "Enqueuing & processing #{COUNT/1000}k native Sidekiq jobs"
-log_message "=== #{benchmark}"
-with_sidekiq do
-  results[benchmark] = Benchmark.measure do
-    COUNT.times do
-      ExampleWorker.perform_async
-    end
-    loop do
-      break if queue_is_empty?
-      sleep 0.1
-    end
-  end.real.round(2)
+adapters.each do |adapter, job|
+  log_message "===== Enqueuing and processing jobs"
+  benchmark = "Enqueuing & processing #{TOTAL} #{adapter} jobs"
+  log_message "=== #{benchmark}"
+  with_adapter(adapter, job) do
+    results[benchmark] = Benchmark.measure do
+      COUNT.times do
+        job[0].send(job[1])
+      end
+      loop do
+        break if queue_is_empty_adapter?(adapter)
+        sleep 0.1
+      end
+    end.real.round(2)
+  end
+  log_message "Duration: #{results[benchmark]} seconds"
 end
-log_message "Duration: #{results[benchmark]} seconds"
 
 puts "=" * 20
 puts "Results:"
 results.each do |metric, duration|
-  puts "#{metric} => #{duration}"
+  puts "#{metric} => #{duration}sec => throughput: #{(COUNT/duration).round} jobs/sec"
 end

@@ -17,6 +17,7 @@ module BenchmarkBuk
     # the framework and any gems in your application.
     config.active_job.queue_adapter = :sidekiq
     # config.active_job.queue_adapter = :good_job
+    GoodJob.preserve_job_records = false
     # config.active_job.queue_adapter = :delayed_job
   end
 end
