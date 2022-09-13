@@ -2,8 +2,10 @@
 # original: https://raw.githubusercontent.com/chrismaximin/benchmark-sidekiq-and-activejob/master/bin/run_benchmarks
 
 def log_message(message)
-  now = Time.now.utc
-  puts "[#{now.to_s(:db)}.#{now.usec}] #{message}"
+  unless ARGV[1].present?
+    now = Time.now.utc
+    puts "[#{now.to_s(:db)}.#{now.usec}] #{message}" 
+  end
 end
 
 STDERR.sync = STDOUT.sync = true
@@ -71,51 +73,141 @@ ensure
   Process.kill("TERM", pid)
 end
 
-results = {}
 adapters ={
   # active_job: [ExampleJob, :perform_later],
   delayed_job: [ExampleDelayedJob, :perform_later, "bundle exec rake jobs:work"],
   good_job: [ExampleGoodJob, :perform_later, "bundle exec good_job start"],
   que_job: [ExampleQueJob, :enqueue, "bundle exec que -q benchmarks -p 1"],
+  # que_job: [ExampleQueJob, :enqueue, "parallel -j 8 bundle exec que -w ::: 12 ::: -q ::: benchmarks"], #Esto fue para probar el paralelismo con 8 procesos y 12 workers
   sidekiq: [ExampleWorker, :perform_async, "bundle e sidekiq -c 1 -q benchmarks"]
 }
 log_message "===== Enqueuing jobs"
 log_message "=== Warmup"
-# ExampleJob.perform_later
-# ExampleWorker.perform_async
+ExampleQueJob.enqueue
+ExampleWorker.perform_async
 
-adapters.each do |adapter, job|
-  benchmark = "Enqueuing #{TOTAL} #{adapter.to_s.camelcase} jobs"
-  log_message "=== #{benchmark}"
-  clear_queue_adapter(adapter)
-  results[benchmark] = Benchmark.measure do
-    COUNT.times do |i|
-      job[0].send(job[1])
-    end
-  end.real.round(2)
-  log_message "Duration: #{results[benchmark]} seconds"  
-end
-
-adapters.each do |adapter, job|
-  log_message "===== Enqueuing and processing jobs"
-  benchmark = "Enqueuing & processing #{TOTAL} #{adapter} jobs"
-  log_message "=== #{benchmark}"
-  with_adapter(adapter, job) do
+def benchmark_v1(adapters)
+  results = {}
+  adapters.each do |adapter, job|
+    benchmark = "Enqueuing #{TOTAL} #{adapter.to_s.camelcase} jobs"
+    log_message "=== #{benchmark}"
+    clear_queue_adapter(adapter)
     results[benchmark] = Benchmark.measure do
-      COUNT.times do
+      COUNT.times do |i|
         job[0].send(job[1])
       end
-      loop do
-        break if queue_is_empty_adapter?(adapter)
-        sleep 0.1
-      end
     end.real.round(2)
+    log_message "Duration: #{results[benchmark]} seconds"  
   end
-  log_message "Duration: #{results[benchmark]} seconds"
+  
+  adapters.each do |adapter, job|
+    log_message "===== Enqueuing and processing jobs"
+    benchmark = "Enqueuing & processing #{TOTAL} #{adapter} jobs"
+    log_message "=== #{benchmark}"
+    with_adapter(adapter, job) do
+      results[benchmark] = Benchmark.measure do
+        COUNT.times do
+          job[0].send(job[1])
+        end
+        loop do
+          break if queue_is_empty_adapter?(adapter)
+          sleep 0.1
+        end
+      end.real.round(2)
+    end
+    log_message "Duration: #{results[benchmark]} seconds"
+  end
+  
+  puts "=" * 20
+  puts "Results:"
+  results.each do |metric, duration|
+    puts "#{metric} => #{duration}sec => throughput: #{(COUNT/duration).round} jobs/sec"
+  end
 end
 
-puts "=" * 20
-puts "Results:"
-results.each do |metric, duration|
-  puts "#{metric} => #{duration}sec => throughput: #{(COUNT/duration).round} jobs/sec"
+def enqueue_benchmark(adapter, job)
+  COUNT.times do |i|
+    job[0].send(job[1])
+  end
 end
+
+def processing_benchmark(adapter, job)
+  with_adapter(adapter, job) do
+    COUNT.times do
+      job[0].send(job[1])
+    end
+    loop do
+      break if queue_is_empty_adapter?(adapter)
+      sleep 0.1
+    end
+  end
+end
+
+def benchmark_v2(adapters)
+  puts "-" * 20
+  puts "E L A P S E D  T I M E"
+
+  puts "-" * 20
+  puts "Enqueuing #{TOTAL} Jobs"
+
+  Benchmark.bmbm do |x|
+    adapters.each do |adapter, job|
+      x.report (adapter.to_s.camelcase) { enqueue_benchmark(adapter, job) }
+    end
+  end
+
+  puts "-" * 20
+  puts "Enqueuing & Procesing #{TOTAL} Jobs"
+
+  Benchmark.bmbm do |x|
+    adapters.each do |adapter, job|
+      x.report (adapter.to_s.camelcase) { processing_benchmark(adapter, job) }
+    end
+  end
+
+  puts "-" * 20
+  puts "M E M O R Y"
+  puts "-" * 20
+  puts "Enqueuing #{TOTAL} Jobs"
+
+  Benchmark.memory do |x|
+    adapters.each do |adapter, job|
+      x.report (adapter.to_s.camelcase) { enqueue_benchmark(adapter, job) }
+    end
+  end
+
+  puts "-" * 20
+  puts "Enqueuing & Procesing #{TOTAL} Jobs"
+
+  Benchmark.memory do |x|
+    adapters.each do |adapter, job|
+      x.report (adapter.to_s.camelcase) { processing_benchmark(adapter, job) }
+    end
+  end
+
+  puts "-" * 20
+  puts "I T E R A T I O N S  P E R  S E C O N D S"
+
+  puts "-" * 20
+  puts "Enqueuing #{TOTAL} Jobs"
+
+  Benchmark.ips do |x|
+    adapters.each do |adapter, job|
+      x.report (adapter.to_s.camelcase) { enqueue_benchmark(adapter, job) }
+    end
+    x.compare!
+  end
+
+  puts "-" * 20
+  puts "Enqueuing & Pocesing #{TOTAL} Jobs"
+
+  Benchmark.ips do |x|
+    adapters.each do |adapter, job|
+      x.report (adapter.to_s.camelcase) { processing_benchmark(adapter, job) }
+    end
+    x.compare!
+  end
+end
+
+ARGV[1].present? ? benchmark_v2(adapters) : benchmark_v1(adapters)
+

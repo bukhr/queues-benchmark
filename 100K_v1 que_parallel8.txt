@@ -1,0 +1,6 @@
+====================
+Results:
+Enqueuing 100K QueJob jobs => 138.48sec => throughput: 722 jobs/sec
+Enqueuing 100K Sidekiq jobs => 10.27sec => throughput: 9737 jobs/sec
+Enqueuing & processing 100K que_job jobs => 217.42sec => throughput: 460 jobs/sec
+Enqueuing & processing 100K sidekiq jobs => 47.77sec => throughput: 2093 jobs/sec

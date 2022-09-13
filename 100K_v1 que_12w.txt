@@ -1,0 +1,8 @@
+Loading rails environment...
+2022-09-13T15:10:58.267Z pid=68184 tid=1fwc INFO: Booting Sidekiq 6.5.6 with Sidekiq::RedisConnection::RedisAdapter options {}
+====================
+Results:
+Enqueuing 100K QueJob jobs => 161.89sec => throughput: 618 jobs/sec
+Enqueuing 100K Sidekiq jobs => 13.37sec => throughput: 7479 jobs/sec
+Enqueuing & processing 100K que_job jobs => 221.81sec => throughput: 451 jobs/sec
+Enqueuing & processing 100K sidekiq jobs => 69.07sec => throughput: 1448 jobs/sec

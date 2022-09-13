@@ -1,0 +1,104 @@
+Loading rails environment...
+2022-09-13T00:14:05.205Z pid=46509 tid=10ll INFO: Booting Sidekiq 6.5.6 with Sidekiq::RedisConnection::RedisAdapter options {}
+--------------------
+E L A P S E D  T I M E
+--------------------
+Enqueuing 1K Jobs
+Rehearsal ----------------------------------------------
+DelayedJob   1.389686   0.089992   1.479678 (  1.876683)
+GoodJob      1.565566   0.090507   1.656073 (  2.116870)
+QueJob       0.377730   0.042237   0.419967 (  1.070766)
+Sidekiq      0.132181   0.029562   0.161743 (  0.167687)
+------------------------------------- total: 3.717461sec
+
+                 user     system      total        real
+DelayedJob   1.349762   0.068112   1.417874 (  1.800279)
+GoodJob      1.537644   0.086228   1.623872 (  2.087518)
+QueJob       0.322109   0.037553   0.359662 (  1.004791)
+Sidekiq      0.124626   0.028997   0.153623 (  0.158691)
+--------------------
+Enqueuing & Procesing 1K Jobs
+Rehearsal ----------------------------------------------
+DelayedJob   1.404877   0.095085   1.499962 ( 13.297607)
+GoodJob      1.637242   0.110117   1.747359 ( 10.324256)
+QueJob       0.398962   0.064230   0.463192 (  8.186651)
+Sidekiq      0.168659   0.056889   0.225548 (  2.648221)
+------------------------------------- total: 3.936061sec
+
+                 user     system      total        real
+DelayedJob   1.430252   0.095983   1.526235 (  8.263461)
+GoodJob      1.625604   0.110176   1.735780 ( 10.313225)
+QueJob       0.405167   0.065763   0.470930 (  8.105079)
+Sidekiq      0.160414   0.057402   0.217816 (  2.426741)
+--------------------
+M E M O R Y
+--------------------
+Enqueuing 1K Jobs
+Calculating -------------------------------------
+          DelayedJob    37.666M memsize (     0.000  retained)
+                       506.017k objects (     0.000  retained)
+                        50.000  strings (     0.000  retained)
+             GoodJob    52.467M memsize (     0.000  retained)
+                       680.000k objects (     0.000  retained)
+                        50.000  strings (     0.000  retained)
+              QueJob    18.683M memsize (     0.000  retained)
+                       146.004k objects (     0.000  retained)
+                        18.000  strings (     0.000  retained)
+             Sidekiq    13.567M memsize (     0.000  retained)
+                        98.255k objects (     0.000  retained)
+                        50.000  strings (     0.000  retained)
+--------------------
+Enqueuing & Procesing 1K Jobs
+Calculating -------------------------------------
+          DelayedJob    38.550M memsize (     0.000  retained)
+                       510.215k objects (     0.000  retained)
+                        50.000  strings (     0.000  retained)
+             GoodJob    53.438M memsize (     0.000  retained)
+                       684.643k objects (     0.000  retained)
+                        50.000  strings (     0.000  retained)
+              QueJob    19.899M memsize (     0.000  retained)
+                       151.308k objects (     0.000  retained)
+                        32.000  strings (     0.000  retained)
+             Sidekiq    17.221M memsize (     0.000  retained)
+                       103.826k objects (     0.000  retained)
+                        50.000  strings (     0.000  retained)
+--------------------
+I T E R A T I O N S  P E R  S E C O N D S
+--------------------
+Enqueuing 1K Jobs
+Warming up --------------------------------------
+          DelayedJob     1.000  i/100ms
+             GoodJob     1.000  i/100ms
+              QueJob     1.000  i/100ms
+             Sidekiq     1.000  i/100ms
+Calculating -------------------------------------
+          DelayedJob      0.567  (± 0.0%) i/s -      3.000  in   5.292900s
+             GoodJob      0.497  (± 0.0%) i/s -      3.000  in   6.033571s
+              QueJob      1.008  (± 0.0%) i/s -      6.000  in   5.955911s
+             Sidekiq      6.276  (± 0.0%) i/s -     32.000  in   5.113513s
+
+Comparison:
+             Sidekiq:        6.3 i/s
+              QueJob:        1.0 i/s - 6.23x  (± 0.00) slower
+          DelayedJob:        0.6 i/s - 11.07x  (± 0.00) slower
+             GoodJob:        0.5 i/s - 12.62x  (± 0.00) slower
+
+--------------------
+Enqueuing & Pocesing 1K Jobs
+Warming up --------------------------------------
+          DelayedJob     1.000  i/100ms
+             GoodJob     1.000  i/100ms
+              QueJob     1.000  i/100ms
+             Sidekiq     1.000  i/100ms
+Calculating -------------------------------------
+          DelayedJob      0.118  (± 0.0%) i/s -      1.000  in   8.494810s
+             GoodJob      0.096  (± 0.0%) i/s -      1.000  in  10.383408s
+              QueJob      0.123  (± 0.0%) i/s -      1.000  in   8.144164s
+             Sidekiq      0.405  (± 0.0%) i/s -      3.000  in   7.421128s
+
+Comparison:
+             Sidekiq:        0.4 i/s
+              QueJob:        0.1 i/s - 3.30x  (± 0.00) slower
+          DelayedJob:        0.1 i/s - 3.44x  (± 0.00) slower
+             GoodJob:        0.1 i/s - 4.20x  (± 0.00) slower
+

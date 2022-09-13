@@ -6,4 +6,4 @@ Instalación:
 
 * `brew install redis`
 
-* Correr el benchmark `bin/run_benchmark` puede recibir un argumento donde se señalan los Nk jobs a ejecutarse (100k por defecto)  
+* Correr el benchmark `bin/run_benchmark Nk` puede recibir un argumento donde se señalan los Nk jobs a ejecutarse (N = 100) por defecto, y un segundo argumento con un 2 si se desea correr la versión 2 del benchmark para comparar memoria e IPS.
