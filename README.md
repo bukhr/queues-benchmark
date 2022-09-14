@@ -60,3 +60,12 @@ Si se desea deshabilitar una prueba de un adaptador (para agilizar los tests) se
 ![Enqueuing & Processing](public/ENQUEUING_JOBS_in_seconds.svg?raw=true "Adapters v/s Enqueing")
 
 ![Enqueuing & Processing](public/ENQUEUING_PROCESSING_JOBS_seconds.svg?raw=true "Adapters v/s Enqueing & Processing")
+
+## Disclaimer
+"Los benchmarks están inherentemente limitados a cuánto pueden revelar"
+
+Si bien es probable que usar Sidekiq de forma nativa siempre sea más rápido y más liviano que envolverlo en ActiveJob, las ganancias de rendimiento pueden ser insignificantes según lo que haga su aplicación.
+
+Por otro lado, Sidekiq ofrece ventajas por estar construido en distintas tecnologías así que se debe tener en cuenta esto al momento de comprarlo y realizar conclusiones
+
+En el benchmark no se utilizan las capacidades de cola masiva de Sidekiq `push_bulk` `perform_bulk` a propósito, porque el objetivo aquí es representar lo que sucede con "una aplicación de Rails normal que de repente tiene mucha actividad.
